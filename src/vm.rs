@@ -1,16 +1,20 @@
-use std::{collections::HashMap, io::{self, Write}};
+use std::{
+    collections::HashMap,
+    io::{self, Write},
+    num::Wrapping,
+};
 
 pub struct VirtualMachine {
-    memory: Vec<u8>,
+    memory: Vec<Wrapping<u8>>,
     code: Vec<char>,
     dc: usize, // data ptr
     pc: usize, // code ptr
 }
 
 impl VirtualMachine {
-    pub fn new(code: &String) -> Self {
+    pub fn new(code: &str) -> Self {
         Self {
-            memory: vec![0; 1000],
+            memory: vec![Wrapping(0); 1000],
             code: code.chars().collect(),
             dc: 0,
             pc: 0,
@@ -31,23 +35,28 @@ impl VirtualMachine {
         match self.code[self.pc] {
             '>' => self.dc += 1,
             '<' => self.dc -= 1,
-            '+' => self.memory[self.dc] = self.memory[self.dc].wrapping_add(1),
-            '-' => self.memory[self.dc] = self.memory[self.dc].wrapping_sub(1),
+            '+' => self.memory[self.dc] += 1,
+            '-' => self.memory[self.dc] -= 1,
             '.' => {
-                print!("{}", self.memory[self.dc] as char);
+                print!("{}", self.memory[self.dc].0 as char);
                 io::stdout().flush().unwrap();
-            },
+            }
             ',' => {
                 let mut tmp_str = String::new();
                 io::stdin().read_line(&mut tmp_str).unwrap();
-                self.memory[self.dc] = tmp_str.chars().next().unwrap() as u8;
-            },
-            '[' => if self.memory[self.dc] == 0 {
-                self.pc = *brackets_cache.get(&self.pc).unwrap();
-            },
-            ']' => if self.memory[self.dc] != 0 {
-                self.pc = *brackets_cache.get(&self.pc).unwrap();
-            },
+                let c = tmp_str.trim().chars().next().unwrap();
+                self.memory[self.dc] = Wrapping(c as u8);
+            }
+            '[' => {
+                if self.memory[self.dc].0 == 0 {
+                    self.pc = *brackets_cache.get(&self.pc).unwrap();
+                }
+            }
+            ']' => {
+                if self.memory[self.dc].0 != 0 {
+                    self.pc = *brackets_cache.get(&self.pc).unwrap();
+                }
+            }
             _ => (),
         }
 
@@ -55,7 +64,7 @@ impl VirtualMachine {
     }
 }
 
-fn fill_brackets_cache(code: &Vec<char>, brackets_cache: &mut HashMap<usize, usize>) {
+fn fill_brackets_cache(code: &[char], brackets_cache: &mut HashMap<usize, usize>) {
     let mut stack = Vec::new();
 
     code.iter().enumerate().for_each(|(i, c)| match c {
@@ -66,7 +75,7 @@ fn fill_brackets_cache(code: &Vec<char>, brackets_cache: &mut HashMap<usize, usi
             };
             brackets_cache.insert(left, i);
             brackets_cache.insert(i, left);
-        },
+        }
         _ => (),
     });
 }
